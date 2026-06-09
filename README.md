@@ -74,15 +74,15 @@ fetches real OHLC from a Python serverless function on Vercel —
 the same architecture as the Beta_Pf dashboard (`api/strategy.py`):
 
 ```
-api/daily-snapshot.py   ← yfinance pull → JSON snapshot, in-memory + edge cached
-index.html              ← loadDataFromAPI() fetches /api/daily-snapshot
+api/daily_snapshot.py   ← yfinance pull → JSON snapshot, in-memory + edge cached
+index.html              ← loadDataFromAPI() fetches /api/daily_snapshot
 requirements.txt        ← yfinance, pandas (Vercel auto-installs)
 vercel.json             ← routes the .py file, sets function memory/timeout
 ```
 
 ### How it works
 
-`GET /api/daily-snapshot` returns the schema in `DATA_SCHEMA.md`:
+`GET /api/daily_snapshot` returns the schema in `DATA_SCHEMA.md`:
 
 ```json
 { "SPY": [{ "d": "2024-01-02", "o": 322.1, "h": 322.8, "l": 320.4, "c": 321.6 }, ...],
@@ -92,7 +92,7 @@ vercel.json             ← routes the .py file, sets function memory/timeout
 - Downloads the full 145-ETF universe + SPY with one batched `yf.download`
   per chunk of 25 tickers (`group_by='ticker'`, `threads=True`).
 - `auto_adjust=False` then forward-fill — **matches Alvaro's pipeline.**
-  Flip `AUTO_ADJUST = True` in `api/daily-snapshot.py` for dividend-adjusted closes.
+  Flip `AUTO_ADJUST = True` in `api/daily_snapshot.py` for dividend-adjusted closes.
 - ~8 years of history per symbol (schema wants 1500 bars min / 1700 recommended).
 - Caches the result in-memory for 6h on warm instances, and sets
   `s-maxage=21600, stale-while-revalidate=86400` so Vercel's edge serves it
@@ -111,7 +111,7 @@ Set `MODE = 'mock'` near the top of the `<script>` in `index.html`.
 If you'd rather not hit Yahoo at request time, have Alvaro's `Breakouts Report`
 write `daily-snapshot.json` (the block in `DATA_SCHEMA.md` does exactly this),
 host it (Vercel Blob / S3 / GitHub release), and point `ENDPOINT` in
-`loadDataFromAPI()` at that URL instead of `/api/daily-snapshot`.
+`loadDataFromAPI()` at that URL instead of `/api/daily_snapshot`.
 
 ---
 
@@ -126,7 +126,7 @@ host it (Vercel Blob / S3 / GitHub release), and point `ENDPOINT` in
 3. Deploy
 
 No build step. Vercel serves `index.html` statically and **auto-detects**
-`api/daily-snapshot.py` as a Python serverless function (it installs
+`api/daily_snapshot.py` as a Python serverless function (it installs
 `requirements.txt` for you). No `functions` block is needed in `vercel.json` —
 the same zero-config Python setup Beta_Pf uses.
 
@@ -146,7 +146,7 @@ open index.html
 npx vercel dev      # needs the Vercel CLI; runs the Python function too
 ```
 
-To test the endpoint alone once deployed: `curl https://<your-app>.vercel.app/api/daily-snapshot | head -c 400`
+To test the endpoint alone once deployed: `curl https://<your-app>.vercel.app/api/daily_snapshot | head -c 400`
 
 ---
 
@@ -163,7 +163,7 @@ To test the endpoint alone once deployed: `curl https://<your-app>.vercel.app/ap
 ## Open items
 
 - [ ] Confirm `iloc[-2]` vs `iloc[-1]` with Alvaro
-- [x] Wire live data — Python/yfinance serverless function (`api/daily-snapshot.py`)
+- [x] Wire live data — Python/yfinance serverless function (`api/daily_snapshot.py`)
 - [x] `EWS` included in the universe (Bonds/DM section)
 - [ ] Optional: ratio panels (Gold/SPY, Copper/Gold, HYG/IEF, EWZ/SPY) for explicit Murphy/Pring intermarket pairs
 - [ ] Optional: virtualize the detail view for the full 144-chart render (currently renders all when active — works but heavy)

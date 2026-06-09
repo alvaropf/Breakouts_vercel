@@ -1047,7 +1047,7 @@ function startingPx(sym, cls) {
 // Alvaro's daily JSON endpoint.
 // ============================================================
 
-const MODE = 'live';  // live: pulls real OHLC from /api/daily-snapshot (yfinance)
+const MODE = 'live';  // live: pulls real OHLC from /api/daily_snapshot (yfinance)
 
 let DATA = {};
 
@@ -1062,7 +1062,7 @@ async function loadData() {
 // Expected response shape: { "SPY": [...bars...], "LQD": [...], ... }
 // where each bar = { d: "YYYY-MM-DD", o, h, l, c }
 async function loadDataFromAPI() {
-  const ENDPOINT = '/api/daily-snapshot';  // ← point to wherever Alvaro publishes
+  const ENDPOINT = '/api/daily_snapshot';  // ← point to wherever Alvaro publishes
   const res = await fetch(ENDPOINT);
   if (!res.ok) throw new Error(`Data fetch failed: ${res.status}`);
   const raw = await res.json();
@@ -1831,7 +1831,7 @@ buildClassButtons();
     console.error(err);
     cioEl.innerHTML = `<div style="padding:48px 28px; text-align:center; color:var(--abs-dn); font-size:11px;">
       Failed to load data: ${err.message}<br>
-      <span style="color:var(--text-mute);">Check MODE setting at top of script, or the /api/daily-snapshot endpoint.</span>
+      <span style="color:var(--text-mute);">Check MODE setting at top of script, or the /api/daily_snapshot endpoint.</span>
     </div>`;
   }
 })();
