@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Breakout/Breakdown Scanner — Absolute &amp; Relative vs SPY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d10;
+    --bg-elev: #11161b;
+    --bg-card: #141a21;
+    --border: #1f2730;
+    --border-strong: #2a333e;
+    --text: #e6e9ec;
+    --text-dim: #8a949e;
+    --text-mute: #5a636d;
+    --amber: #d4a548;
+    --amber-bright: #f0c060;
+    --power-up: #1f9d55;
+    --abs-up: #2eb86b;
+    --rel-up: #6dc88a;
+    --neutral: #4a5560;
+    --rel-dn: #d18585;
+    --abs-dn: #c8533f;
+    --power-dn: #9e2820;
+    --chart-price: #d4a548;
+    --chart-sma50: #5a8fc7;
+    --chart-sma200: #8a6fa8;
+    --chart-rs: #c7a8d4;
+    --chart-channel: rgba(212, 165, 72, 0.10);
+    --chart-channel-line: rgba(212, 165, 72, 0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(212, 165, 72, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(90, 143, 199, 0.02) 0%, transparent 50%);
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px 16px;
+    background: var(--bg-elev);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 24px;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  h1 .accent { color: var(--amber); font-style: italic; font-weight: 500; }
+  .sub {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-top: 4px;
+  }
+  .meta {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    font-size: 10.5px;
+    color: var(--text-dim);
+  }
+  .meta .dot { color: var(--amber); }
+  .meta .live {
+    color: var(--power-up);
+    font-weight: 600;
+    font-size: 9.5px;
+    letter-spacing: 0.15em;
+    padding: 3px 8px;
+    border: 1px solid var(--power-up);
+    border-radius: 2px;
+  }
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .control-label {
+    font-size: 9.5px;
+    color: var(--text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .toggle {
+    display: inline-flex;
+    border: 1px solid var(--border-strong);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .toggle button {
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .toggle button:hover { color: var(--text); background: rgba(212, 165, 72, 0.04); }
+  .toggle button.active {
+    background: var(--amber);
+    color: #0a0d10;
+    font-weight: 700;
+  }
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-left: auto;
+    font-size: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+  }
+  .legend-swatch {
+    width: 8px; height: 8px;
+    display: inline-block;
+    border-radius: 2px;
+  }
+
+  /* SUMMARY BAR */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    margin: 16px 28px 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .summary-cell {
+    background: var(--bg-card);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .summary-cell .label {
+    color: var(--text-mute);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .summary-cell .value {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+  }
+  .summary-cell .value.pos { color: var(--abs-up); }
+  .summary-cell .value.neg { color: var(--abs-dn); }
+  .summary-cell .value.amber { color: var(--amber); }
+  .summary-cell .sub {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-top: 2px;
+  }
+
+  /* MAIN */
+  main {
+    padding: 16px 28px 40px;
+  }
+
+  /* INTERMARKET GRID — REL primary (top sub-row) + ABS secondary (bottom sub-row) */
+  .relgrid {
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .rg-colhead {
+    display: grid;
+    grid-template-columns: 110px 1fr 1fr;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .rg-colhead .cell {
+    padding: 14px 18px 12px;
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .rg-colhead .cell .meta {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 400;
+    color: var(--text-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+  .rg-colhead .cell.up    { color: var(--abs-up); border-bottom: 2px solid var(--abs-up); }
+  .rg-colhead .cell.dn    { color: var(--abs-dn); border-bottom: 2px solid var(--abs-dn); }
+  .rg-colhead .cell.cls-h { color: var(--amber); border-bottom: 2px solid var(--border-strong); }
+
+  /* Each asset class = one outer row with TWO sub-rows: REL then ABS */
+  .rg-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 1fr;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .rg-row:last-child { border-bottom: none; }
+  .rg-row:hover { background: rgba(212, 165, 72, 0.015); }
+
+  .rg-class {
+    padding: 14px 18px;
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
+  .rg-class .name {
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--amber);
+  }
+  .rg-class .count {
+    font-size: 9px;
+    color: var(--text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Stacked sub-rows for REL + ABS within a single class row */
+  .rg-stack {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+  .rg-stack:last-child { border-right: none; }
+
+  .rg-subrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    min-height: 38px;
+  }
+  .rg-subrow.rel {
+    border-bottom: 1px dashed var(--border);
+    background: rgba(212, 165, 72, 0.015);
+  }
+  .rg-subrow.abs {
+    background: transparent;
+  }
+  .rg-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-mute);
+    width: 32px;
+    flex-shrink: 0;
+  }
+  .rg-subrow.rel .rg-tag { color: var(--amber); }
+  .rg-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 6px;
+    flex: 1;
+  }
+  .rg-chips.empty {
+    color: var(--text-mute);
+    opacity: 0.25;
+    font-size: 10px;
+    line-height: 22px;
+  }
+  .rg-chips.empty::before { content: '·'; }
+
+  /* CHIPS — different sizing for REL (prominent) vs ABS (compact) */
+  .rchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    cursor: default;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    transition: transform 0.1s;
+  }
+  .rchip:hover { transform: translateY(-1px); }
+  /* REL chips — bigger, more prominent */
+  .rchip.rel {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  /* ABS chips — smaller, muted */
+  .rchip.abs {
+    padding: 3px 7px;
+    font-size: 10.5px;
+    opacity: 0.85;
+  }
+  .rchip.up   { background: rgba(46, 184, 107, 0.12); border-color: rgba(46, 184, 107, 0.55); color: var(--abs-up); }
+  .rchip.dn   { background: rgba(200, 83, 63, 0.12); border-color: rgba(200, 83, 63, 0.55); color: var(--abs-dn); }
+  /* "Confluence" — when REL and ABS both fire same direction for this name */
+  .rchip.conf.up  { background: var(--abs-up); color: #0a0d10; border-color: var(--abs-up); }
+  .rchip.conf.dn  { background: var(--abs-dn); color: #ffffff; border-color: var(--abs-dn); }
+  .rchip .delta {
+    font-size: 9.5px;
+    font-weight: 500;
+    opacity: 0.75;
+  }
+  .rchip.conf.up .delta, .rchip.conf.dn .delta { opacity: 0.65; }
+  /* Life-high / Life-low — most powerful signal (no overhead supply / no support) */
+  .rchip.life {
+    box-shadow: 0 0 0 2px var(--amber);
+    z-index: 1;
+    position: relative;
+  }
+  .rchip-life {
+    color: var(--amber);
+    font-size: 11px;
+    line-height: 1;
+    margin-right: 1px;
+    text-shadow: 0 0 4px rgba(212, 165, 72, 0.6);
+  }
+  .rchip.conf.up.life .rchip-life,
+  .rchip.conf.dn.life .rchip-life {
+    color: #ffffff;
+    text-shadow: 0 0 6px rgba(212, 165, 72, 1);
+  }
+
+  /* Detail */
+  #detail-view { display: none; }
+  body.detail-active #cio-view { display: none; }
+  body.detail-active #detail-view { display: block; }
+  /* DETAIL — Alvaro-style full charts */
+  .detail-class-header {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--amber);
+    margin: 32px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  /* Each ticker = a card with title + full chart */
+  .alvaro-card {
+    background: #f6f4ed;     /* warm off-white, like Alvaro's matplotlib */
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    margin-bottom: 16px;
+    padding: 16px 20px 12px;
+    color: #1c1c1c;
+  }
+  /* Highlight cards that hit a life-high or life-low — most powerful signal */
+  .alvaro-card.has-life {
+    border: 2px solid var(--amber);
+    box-shadow: 0 0 0 1px rgba(212, 165, 72, 0.25);
+  }
+  .life-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--amber);
+    color: #0a0d10;
+    margin-left: 4px;
+  }
+  .life-badge.lo {
+    background: #5a3030;
+    color: #f0c060;
+  }
+  .alvaro-card .title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+    letter-spacing: 0.01em;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .alvaro-card .title .right-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #5a5a5a;
+    letter-spacing: 0.02em;
+  }
+  .alvaro-card .signal-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 10.5px;
+    color: #5a5a5a;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .alvaro-card .signal-row .pill {
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-weight: 700;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .alvaro-card .signal-row .pill.power-up { background: #d4ebd8; color: #1f7a3a; }
+  .alvaro-card .signal-row .pill.abs-up   { background: #dceee0; color: #2c8a4a; }
+  .alvaro-card .signal-row .pill.rel-up   { background: #e6f0e8; color: #4a8a5e; }
+  .alvaro-card .signal-row .pill.neutral  { background: #eaeaea; color: #5a5a5a; }
+  .alvaro-card .signal-row .pill.rel-dn   { background: #efd9d9; color: #a04848; }
+  .alvaro-card .signal-row .pill.abs-dn   { background: #ecc8c0; color: #b14430; }
+  .alvaro-card .signal-row .pill.power-dn { background: #e0b5ab; color: #882418; }
+
+  .chart-wrap { position: relative; width: 100%; height: 280px; }
+  .chart-wrap svg { width: 100%; height: 100%; display: block; }
+  .chart-wrap .legend {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid #cccccc;
+    padding: 6px 10px;
+    font-size: 10px;
+    line-height: 1.6;
+    color: #1a1a1a;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  .chart-wrap .legend .swatch {
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .chart-wrap .legend .swatch.dashed {
+    border-top: 2px dashed currentColor;
+    background: none;
+    height: 0;
+  }
+
+  footer {
+    padding: 18px 28px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-mute);
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .footer-formulas {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--text-dim);
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .footer-formulas strong {
+    color: var(--amber);
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .footer-attr {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  footer .key { color: var(--amber); font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div>
+      <h1>Intermarket <span class="accent">/</span> Action Sheet</h1>
+      <div class="sub">DELOREAN · RELATIVE STRENGTH vs SPY · DONCHIAN T-1</div>
+    </div>
+    <div class="meta">
+      <span><span class="dot">◆</span> UNIVERSE <span id="univ-count">—</span></span>
+      <span>AS OF <span id="asof">—</span></span>
+      <span class="live" id="mode-badge">LOADING…</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <span class="control-label">Lookback</span>
+      <div class="toggle" id="lookback-toggle">
+        <button data-n="121" class="active">121D · 6M</button>
+        <button data-n="226">226D · 12M</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">View</span>
+      <div class="toggle" id="view-toggle">
+        <button data-view="cio" class="active">CIO Scan</button>
+        <button data-view="detail">Detail + Charts</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <span class="control-label">Asset Class</span>
+      <div class="toggle" id="class-toggle">
+        <button data-cls="ALL" class="active">All</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="summary" id="summary"></div>
+
+<main>
+  <div id="cio-view"></div>
+  <div id="detail-view"></div>
+</main>
+
+<footer>
+  <div class="footer-formulas">
+    <span><strong>Abs Donchian:</strong> UCL=max(Close,N).shift(1), LCL=min(Close,N).shift(1) · N=121 (6M) / 226 (12M)</span>
+    <span><strong>Relative:</strong> RS=[Close/Close.iloc[-1500]] / [SPY/SPY.iloc[-1500]] × 100, Donchian on RS</span>
+    <span><strong>ATR:</strong> TR=max(H-L, |H-C₋₁|, |L-C₋₁|), ATR=EMA(TR,14), Stop=Px−3·ATR</span>
+  </div>
+  <div class="footer-attr">
+    <span>DeLorean Partners · synced to Alvaro's Python · T-1 signal read</span>
+    <span class="key">v0.3</span>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   UNIVERSE — Alvaro's full ETF_PreselectedList (~145 ETFs)
+   Asset classes: Bonds, China, Commodities, Cripto, DM, EM, India, Tech, US
+   ============================================================ */
+const UNIVERSE = [
+  // Bonds
+  { sym: 'LQD',  cls: 'Bonds', name: 'iShares iBoxx $ IG Corp Bond ETF' },
+  { sym: 'IEF',  cls: 'Bonds', name: 'iShares 7-10Y Treasury Bond ETF' },
+  { sym: 'AGG',  cls: 'Bonds', name: 'iShares Core US Aggregate Bond ETF' },
+  { sym: 'EMB',  cls: 'Bonds', name: 'iShares JPM EM USD Bond ETF' },
+  { sym: 'TLT',  cls: 'Bonds', name: 'iShares 20+Y Treasury Bond ETF' },
+  { sym: 'SHY',  cls: 'Bonds', name: 'iShares 1-3Y Treasury Bond ETF' },
+  { sym: 'MUB',  cls: 'Bonds', name: 'iShares National Muni Bond ETF' },
+  { sym: 'HYG',  cls: 'Bonds', name: 'iShares iBoxx $ HY Corp Bond ETF' },
+  { sym: 'IAGG', cls: 'Bonds', name: 'iShares International Aggregate Bond' },
+  // China
+  { sym: 'CNYA',    cls: 'China', name: 'iShares MSCI China A ETF' },
+  { sym: 'KWEB',    cls: 'China', name: 'KraneShares CSI China Internet' },
+  { sym: 'MCHI',    cls: 'China', name: 'iShares MSCI China ETF' },
+  { sym: '2822.HK', cls: 'China', name: 'iShares FTSE China A50 ETF' },
+  { sym: '3110.HK', cls: 'China', name: 'Global X HS High Div Yield ETF' },
+  { sym: 'CQQQ',    cls: 'China', name: 'Invesco China Technology ETF' },
+  // Commodities
+  { sym: 'CANE',   cls: 'Commodities', name: 'Teucrium Sugar Fund' },
+  { sym: 'MOO',    cls: 'Commodities', name: 'VanEck Agribusiness ETF' },
+  { sym: 'PICK',   cls: 'Commodities', name: 'iShares MSCI Metals & Mining' },
+  { sym: 'GNR',    cls: 'Commodities', name: 'SPDR S&P Global Natural Resources' },
+  { sym: 'LIT',    cls: 'Commodities', name: 'Global X Lithium & Battery Tech' },
+  { sym: 'ICLN',   cls: 'Commodities', name: 'iShares Global Clean Energy' },
+  { sym: 'URA',    cls: 'Commodities', name: 'Global X Uranium ETF' },
+  { sym: 'XME',    cls: 'Commodities', name: 'SPDR S&P Metals & Mining ETF' },
+  { sym: 'GDX',    cls: 'Commodities', name: 'VanEck Gold Miners ETF' },
+  { sym: 'AIGL.L', cls: 'Commodities', name: 'WisdomTree Livestock' },
+  { sym: 'TINM.L', cls: 'Commodities', name: 'WisdomTree Tin' },
+  { sym: 'COFF.L', cls: 'Commodities', name: 'WisdomTree Coffee' },
+  { sym: 'COCO.L', cls: 'Commodities', name: 'WisdomTree Cocoa' },
+  { sym: 'COPX',   cls: 'Commodities', name: 'Global X Copper Miners ETF' },
+  { sym: 'CPER',   cls: 'Commodities', name: 'US Copper Index Fund' },
+  { sym: 'NICK.L', cls: 'Commodities', name: 'WisdomTree Nickel' },
+  { sym: 'PALL',   cls: 'Commodities', name: 'abrdn Physical Palladium' },
+  { sym: 'CORN',   cls: 'Commodities', name: 'Teucrium Corn Fund' },
+  { sym: 'DBA',    cls: 'Commodities', name: 'Invesco DB Agriculture' },
+  { sym: 'PPLT',   cls: 'Commodities', name: 'abrdn Physical Platinum' },
+  { sym: 'USO',    cls: 'Commodities', name: 'US Oil Fund' },
+  { sym: 'GSG',    cls: 'Commodities', name: 'iShares GSCI Commodity Index' },
+  { sym: 'SLV',    cls: 'Commodities', name: 'iShares Silver Trust' },
+  { sym: 'GLTR',   cls: 'Commodities', name: 'abrdn Physical Precious Metals' },
+  { sym: 'UGA',    cls: 'Commodities', name: 'US Gasoline Fund LP' },
+  { sym: 'UNG',    cls: 'Commodities', name: 'US Natural Gas Fund LP' },
+  { sym: 'WEAT',   cls: 'Commodities', name: 'Teucrium Wheat Fund' },
+  { sym: 'DBC',    cls: 'Commodities', name: 'Invesco DB Commodity Index' },
+  { sym: 'GLD',    cls: 'Commodities', name: 'SPDR Gold Trust' },
+  // Cripto
+  { sym: 'ETH-USD', cls: 'Cripto', name: 'iShares Ethereum Trust' },
+  { sym: 'BTC-USD', cls: 'Cripto', name: 'iShares Bitcoin Trust' },
+  // DM
+  { sym: 'IXJ',  cls: 'DM', name: 'iShares Global Healthcare ETF' },
+  { sym: 'EWS',  cls: 'DM', name: 'iShares MSCI Singapore ETF' },
+  { sym: 'IEFA', cls: 'DM', name: 'iShares Core MSCI EAFE ETF' },
+  { sym: 'VPL',  cls: 'DM', name: 'Vanguard FTSE Pacific ETF' },
+  { sym: 'EWD',  cls: 'DM', name: 'iShares MSCI Sweden ETF' },
+  { sym: 'EWN',  cls: 'DM', name: 'iShares MSCI Netherlands' },
+  { sym: 'EWL',  cls: 'DM', name: 'iShares MSCI Switzerland ETF' },
+  { sym: 'EWP',  cls: 'DM', name: 'iShares MSCI Spain ETF' },
+  { sym: 'IGF',  cls: 'DM', name: 'iShares Global Infrastructure ETF' },
+  { sym: 'EFV',  cls: 'DM', name: 'iShares MSCI EAFE Value ETF' },
+  { sym: 'IEUR', cls: 'DM', name: 'iShares Core MSCI Europe ETF' },
+  { sym: 'EWA',  cls: 'DM', name: 'iShares MSCI Australia' },
+  { sym: 'EWJ',  cls: 'DM', name: 'iShares MSCI Japan' },
+  { sym: 'EWQ',  cls: 'DM', name: 'iShares MSCI France' },
+  { sym: 'ACWI', cls: 'DM', name: 'iShares MSCI ACWI ETF' },
+  { sym: 'ACWX', cls: 'DM', name: 'iShares MSCI ACWI ex-US ETF' },
+  { sym: 'EWG',  cls: 'DM', name: 'iShares MSCI Germany' },
+  { sym: 'VEA',  cls: 'DM', name: 'Vanguard FTSE Developed Markets' },
+  { sym: 'EWC',  cls: 'DM', name: 'iShares MSCI Canada' },
+  { sym: 'EWI',  cls: 'DM', name: 'iShares MSCI Italy ETF' },
+  { sym: 'EWU',  cls: 'DM', name: 'iShares MSCI United Kingdom' },
+  { sym: 'FEZ',  cls: 'DM', name: 'SPDR DJ Euro STOXX 50' },
+  { sym: 'IQLT', cls: 'DM', name: 'iShares MSCI Intl Quality Factor' },
+  // EM
+  { sym: 'ECH',  cls: 'EM', name: 'iShares MSCI Chile ETF' },
+  { sym: 'GREK', cls: 'EM', name: 'Global X MSCI Greece ETF' },
+  { sym: 'UAE',  cls: 'EM', name: 'iShares MSCI UAE ETF' },
+  { sym: 'ARGT', cls: 'EM', name: 'Global X MSCI Argentina ETF' },
+  { sym: 'THD',  cls: 'EM', name: 'iShares MSCI Thailand ETF' },
+  { sym: 'EPHE', cls: 'EM', name: 'iShares MSCI Philippines ETF' },
+  { sym: 'AIA',  cls: 'EM', name: 'iShares Asia 50 ETF' },
+  { sym: 'INDA', cls: 'EM', name: 'iShares MSCI India ETF' },
+  { sym: 'EZA',  cls: 'EM', name: 'iShares MSCI South Africa' },
+  { sym: 'TUR',  cls: 'EM', name: 'iShares MSCI Turkey ETF' },
+  { sym: 'EWW',  cls: 'EM', name: 'iShares MSCI Mexico' },
+  { sym: 'EWZ',  cls: 'EM', name: 'iShares MSCI Brazil' },
+  { sym: 'EMXC', cls: 'EM', name: 'iShares MSCI EM ex-China ETF' },
+  { sym: 'EWT',  cls: 'EM', name: 'iShares MSCI Taiwan ETF' },
+  { sym: 'EEM',  cls: 'EM', name: 'iShares MSCI EM Index Fund' },
+  { sym: 'EWY',  cls: 'EM', name: 'iShares MSCI South Korea' },
+  { sym: 'AAXJ', cls: 'EM', name: 'iShares MSCI ACWI Asia ex-Japan' },
+  { sym: 'ILF',  cls: 'EM', name: 'iShares Latin America 40 ETF' },
+  { sym: 'EPOL', cls: 'EM', name: 'iShares MSCI Poland ETF' },
+  { sym: 'EIDO', cls: 'EM', name: 'iShares MSCI Indonesia ETF' },
+  { sym: 'KSA',  cls: 'EM', name: 'iShares MSCI Saudi Arabia ETF' },
+  { sym: 'EWM',  cls: 'EM', name: 'iShares MSCI Malaysia' },
+  // India
+  { sym: 'EPI',  cls: 'India', name: 'WisdomTree India Earnings Fund' },
+  { sym: 'SMIN', cls: 'India', name: 'iShares MSCI India Small Cap ETF' },
+  // Tech
+  { sym: 'SMH',  cls: 'Tech', name: 'VanEck Semiconductor ETF' },
+  { sym: 'IGM',  cls: 'Tech', name: 'iShares Expanded Tech Sector ETF' },
+  { sym: 'AIQ',  cls: 'Tech', name: 'Global X AI & Technology ETF' },
+  { sym: 'TAN',  cls: 'Tech', name: 'Invesco Solar ETF' },
+  { sym: 'SKYY', cls: 'Tech', name: 'First Trust Cloud Computing ETF' },
+  { sym: 'IGV',  cls: 'Tech', name: 'iShares Expanded Tech-Software' },
+  { sym: 'ARKK', cls: 'Tech', name: 'ARK Innovation ETF' },
+  { sym: 'CIBR', cls: 'Tech', name: 'First Trust NASDAQ Cybersecurity' },
+  // US
+  { sym: 'JETS', cls: 'US', name: 'US Global Jets ETF' },
+  { sym: 'IWN',  cls: 'US', name: 'iShares Russell 2000 Value ETF' },
+  { sym: 'IBB',  cls: 'US', name: 'iShares Biotechnology ETF' },
+  { sym: 'VBK',  cls: 'US', name: 'Vanguard Small-Cap Growth ETF' },
+  { sym: 'IAT',  cls: 'US', name: 'iShares US Regional Banks ETF' },
+  { sym: 'ITA',  cls: 'US', name: 'iShares US Aerospace & Defense' },
+  { sym: 'IYT',  cls: 'US', name: 'iShares US Transportation' },
+  { sym: 'XTL',  cls: 'US', name: 'SPDR S&P Telecom ETF' },
+  { sym: 'PRN',  cls: 'US', name: 'Invesco DWA Industrials Momentum' },
+  { sym: 'AIRR', cls: 'US', name: 'First Trust RBA Am Industrial' },
+  { sym: 'RSP',  cls: 'US', name: 'Invesco S&P 500 Equal Weight' },
+  { sym: 'OEF',  cls: 'US', name: 'iShares S&P 100 ETF' },
+  { sym: 'XLK',  cls: 'US', name: 'SPDR Technology Select Sector' },
+  { sym: 'XLY',  cls: 'US', name: 'SPDR Consumer Discretionary' },
+  { sym: 'VTV',  cls: 'US', name: 'Vanguard Value ETF' },
+  { sym: 'RWR',  cls: 'US', name: 'SPDR DJ Wilshire REIT ETF' },
+  { sym: 'ITB',  cls: 'US', name: 'iShares US Home Construction' },
+  { sym: 'IHI',  cls: 'US', name: 'iShares US Medical Devices' },
+  { sym: 'XRT',  cls: 'US', name: 'SPDR S&P Retail ETF' },
+  { sym: 'MGK',  cls: 'US', name: 'Vanguard Mega Cap Growth' },
+  { sym: 'SPY',  cls: 'US', name: 'SPDR S&P 500 ETF (BENCHMARK)' },
+  { sym: 'QQQ',  cls: 'US', name: 'Invesco QQQ Trust' },
+  { sym: 'DIA',  cls: 'US', name: 'SPDR Dow Jones Industrial Average' },
+  { sym: 'IWM',  cls: 'US', name: 'iShares Russell 2000 ETF' },
+  { sym: 'XLI',  cls: 'US', name: 'SPDR Industrial Select Sector' },
+  { sym: 'XLV',  cls: 'US', name: 'SPDR Health Care Select Sector' },
+  { sym: 'XLU',  cls: 'US', name: 'SPDR Utilities Select Sector' },
+  { sym: 'VTI',  cls: 'US', name: 'Vanguard Total Stock Market ETF' },
+  { sym: 'XLP',  cls: 'US', name: 'SPDR Consumer Staples Select' },
+  { sym: 'XLC',  cls: 'US', name: 'SPDR Communication Services' },
+  { sym: 'XLB',  cls: 'US', name: 'SPDR Materials Select Sector' },
+  { sym: 'XLE',  cls: 'US', name: 'SPDR Energy Select Sector' },
+  { sym: 'IJR',  cls: 'US', name: 'iShares Core S&P Small-Cap' },
+  { sym: 'XBI',  cls: 'US', name: 'SPDR S&P Biotech ETF' },
+  { sym: 'IWD',  cls: 'US', name: 'iShares Russell 1000 Value' },
+  { sym: 'XOP',  cls: 'US', name: 'SPDR S&P Oil & Gas E&P' },
+  { sym: 'IJH',  cls: 'US', name: 'iShares Core S&P Mid-Cap ETF' },
+  { sym: 'XLF',  cls: 'US', name: 'SPDR Financial Select Sector' },
+  { sym: 'KRE',  cls: 'US', name: 'SPDR S&P Regional Banking ETF' },
+  { sym: 'IWF',  cls: 'US', name: 'iShares Russell 1000 Growth' },
+  { sym: 'XLRE', cls: 'US', name: 'SPDR Real Estate Select Sector' },
+  { sym: 'IAK',  cls: 'US', name: 'iShares US Insurance ETF' },
+  { sym: 'KBE',  cls: 'US', name: 'SPDR S&P Bank ETF' },
+  { sym: 'QUAL', cls: 'US', name: 'iShares MSCI USA Quality Factor' },
+  { sym: 'UFO',  cls: 'US', name: 'Procure Space ETF' },
+];
+
+const ASSET_CLASSES = ['Bonds','China','Commodities','Cripto','DM','EM','India','Tech','US'];
+
+/* ============================================================
+   MOCK DATA — 1600 bars of OHLC (need at least 1500 for the
+   rebased RS, plus 226 for the 12-month Donchian)
+   ============================================================ */
+const N_DAYS = 1600;
+const REBASE_IDX = N_DAYS - 1500;  // matches Alvaro's iloc[-1500] rebase point
+
+function seedRandom(seed) {
+  let s = seed;
+  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+}
+function gaussian(rand) {
+  const u1 = Math.max(rand(), 1e-9);
+  const u2 = rand();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+// Real business-day dates for the mock series. Walk backward from today,
+// skipping Saturdays and Sundays. When real data wires in, each bar will
+// already have a date string from the source; this block just keeps the
+// chart code consistent in both worlds.
+function buildBusinessDayDates(n) {
+  const dates = [];
+  const today = new Date();
+  // Move today to the most recent business day
+  while (today.getDay() === 0 || today.getDay() === 6) {
+    today.setDate(today.getDate() - 1);
+  }
+  let cur = new Date(today);
+  for (let i = 0; i < n; i++) {
+    dates.unshift(new Date(cur));
+    cur.setDate(cur.getDate() - 1);
+    while (cur.getDay() === 0 || cur.getDay() === 6) cur.setDate(cur.getDate() - 1);
+  }
+  return dates;
+}
+const BAR_DATES = buildBusinessDayDates(N_DAYS);
+
+// SPY: realistic-looking benchmark. Critically, the last 121 days contain BOTH a
+// clear peak (around day N-65) and a clear trough (around day N-15) — this
+// asymmetric peak/trough geometry is what makes pure abs-up-without-rel-up (and
+// the four other "single break" cases) constructible in the post-process.
+function genSPY() {
+  const rand = seedRandom(7777);
+  const series = [];
+  let px = 280;
+  for (let i = 0; i < N_DAYS; i++) {
+    let drift = 0.00035;
+    if (i > 200 && i < 350) drift = -0.0010;
+    if (i > 350 && i < 600) drift = 0.0010;
+    if (i > 900 && i < 950) drift = -0.0020;
+    if (i > 1300 && i < 1450) drift = 0.0008;
+
+    // Engineered late-window geometry. Last 121 days must contain:
+    //   - a CLEAR peak (about day N-65)  — SPY at ~1.55x today
+    //   - a CLEAR trough (about day N-10) — SPY at ~0.80x today
+    //   - today (N-1) is mid-range, just above trough
+    if (i >= N_DAYS - 115 && i < N_DAYS - 70) drift = 0.0070;
+    else if (i >= N_DAYS - 70 && i < N_DAYS - 8) drift = -0.0050;
+    else if (i >= N_DAYS - 8) drift = 0.0080;
+
+    const ret = drift + 0.0085 * gaussian(rand);
+    const open = px;
+    const close = px * (1 + ret);
+    const range = 0.006 * (0.5 + rand());
+    const high = Math.max(open, close) * (1 + range * rand());
+    const low  = Math.min(open, close) * (1 - range * rand());
+    series.push({ date: BAR_DATES[i], open, high, low, close });
+    px = close;
+  }
+  return series;
+}
+const SPY = genSPY();
+
+/* ============================================================
+   Each ETF gets a scenario that makes it land in one of the
+   six signal types at the 121d lookback. Since we have ~145
+   names, we distribute scenarios deterministically by index so
+   every asset class gets some breakouts, some breakdowns, and
+   some neutrals.
+
+   Scenario mix (will be visible in the CIO tables):
+     power_up (3+1+1 RS): strong trend, late acceleration
+     abs_up:              flat then late price rally
+     rel_up:              underperformed then late RS surge
+     neutral:             drifts mid-channel
+     rel_dn:              outperformed then late RS fade
+     abs_dn:              flat then late price drop
+     power_dn:            sustained downtrend + late accel down
+   ============================================================ */
+const SCENARIO_CYCLE = [
+  'power_up', 'abs_up', 'rel_up', 'neutral', 'neutral',
+  'rel_dn',  'abs_dn', 'power_dn', 'neutral', 'neutral',
+  'abs_up',  'rel_up',  'rel_dn',  'abs_dn',  'neutral',
+];
+
+function scenarioFor(sym, idx) {
+  if (sym === 'SPY') return 'neutral';
+  return SCENARIO_CYCLE[idx % SCENARIO_CYCLE.length];
+}
+
+function genETF(sym, startPx, scenario, seed) {
+  const rand = seedRandom(seed);
+  const series = [];
+  let px = startPx;
+  const vol = sym.endsWith('-USD') ? 0.030 :  // crypto
+              ['SLV','GLD','GDX','URA','LIT','XBI','SMH','ARKK'].includes(sym) ? 0.022 :
+              0.014;
+  const beta = (scenario === 'rel_up' || scenario === 'rel_dn') ? 0.15 :
+               (scenario === 'power_up' || scenario === 'power_dn') ? 0.55 :
+               (scenario === 'abs_up' || scenario === 'abs_dn') ? 0.65 :
+               0.40;
+  const baseDrift = (scenario === 'power_up') ? 0.0006 :
+                    (scenario === 'power_dn') ? -0.0006 :
+                    0;
+
+  for (let i = 0; i < N_DAYS; i++) {
+    const spyRet = i > 0 ? (SPY[i].close / SPY[i-1].close - 1) : 0;
+    let drift = baseDrift;
+    const idio = vol * gaussian(rand);
+    const ret = beta * spyRet + (1 - beta) * idio + drift;
+    const open = px;
+    const close = px * (1 + ret);
+    const range = vol * 0.55 * (0.5 + rand());
+    const high = Math.max(open, close) * (1 + range * rand());
+    const low  = Math.min(open, close) * (1 - range * rand());
+    series.push({ date: BAR_DATES[i], open, high, low, close });
+    px = close;
+  }
+  return series;
+}
+
+/* ============================================================
+   POST-PROCESS — force every ETF onto its intended signal at
+   T-1 by engineering the 121d bands and the close at index i-1
+   (= "yesterday", since Alvaro reads signals from iloc[-2]).
+   We use two anchor bars + a reset of the lookback window.
+   ============================================================ */
+function adjustBars(sym, scenario, dataObj) {
+  if (sym === 'SPY') return;
+  const bars = dataObj[sym];
+  const spyBars = dataObj['SPY'];
+  const N = 121;
+  const i = bars.length - 2;  // T-1
+
+  // Dynamically find SPY peak and trough within the lookback window [i-N, i-1].
+  let peakIdx = i - 1, peakVal = -Infinity;
+  let troughIdx = i - 1, troughVal = Infinity;
+  for (let j = i - N; j < i; j++) {
+    if (spyBars[j].close > peakVal) { peakVal = spyBars[j].close; peakIdx = j; }
+    if (spyBars[j].close < troughVal) { troughVal = spyBars[j].close; troughIdx = j; }
+  }
+  if (peakIdx === troughIdx) { peakIdx = i - 10; troughIdx = i - 60; }
+  const anchorP_idx = peakIdx;
+  const anchorR_idx = troughIdx;
+
+  const spy_today = spyBars[i].close;
+  const spy_P = spyBars[anchorP_idx].close;
+  const spy_R = spyBars[anchorR_idx].close;
+  const ratioP = spy_P / spy_today;
+  const ratioR = spy_R / spy_today;
+
+  // Use a fixed "baseClose" for engineering the window. The actual today (T-1) close
+  // is set separately at the end to be EXPLICITLY above/below the band edges.
+  // This decouples reset bars from today's close, so wide SPY swings in the window
+  // don't drag the bands into today's territory.
+  const baseClose = bars[i].close;
+
+  // Reset bars: a tight band scaled by SPY, around baseClose
+  // Scaled by spyHere/spy_today so the RS line is roughly constant across resets.
+  // We position them at baseClose itself (multiplier = 1.0). Today is then placed
+  // explicitly outside the band.
+  for (let j = i - N; j < i; j++) {
+    if (j === anchorP_idx || j === anchorR_idx) continue;
+    const bar = bars[j];
+    const spyHere = spyBars[j].close;
+    const refClose = baseClose * (spyHere / spy_today);
+    bar.close = refClose;
+    bar.open  = refClose;
+    bar.high  = refClose * 1.002;
+    bar.low   = refClose * 0.998;
+  }
+
+  // With resets at price level = baseClose * (spyHere/spy_today), the reset bar's
+  // RS is constant = baseClose/spy_today * (base scaling) — call this "today's RS level".
+  // pHi from resets = baseClose * maxRatio
+  // pLo from resets = baseClose * minRatio
+  // rHi from resets = today's RS = rLo (one value, all the same)
+  // Now anchors and today displacement engineer the actual breaks.
+
+  let anchorP_close, anchorR_close, todayClose;
+  const maxResetRatio = Math.max(ratioP, 1);
+  const minResetRatio = Math.min(ratioR, 1);
+
+  switch (scenario) {
+    case 'power_up':
+      // Today's close > pHi (= baseClose * maxResetRatio) AND > anchorP_close.
+      // Today's RS > rHi → todayClose/spy_today > anchorR_close/spy_R
+      anchorP_close = baseClose * (maxResetRatio + 0.02);   // slightly above reset max
+      anchorR_close = baseClose * ratioR * 1.02;            // RS = today's * 1.02 (above today's RS but anchors don't dominate today)
+      todayClose    = baseClose * (maxResetRatio + 0.08);   // 8% above reset top — clear break
+      break;
+
+    case 'power_dn':
+      anchorP_close = baseClose * (minResetRatio - 0.02);
+      anchorR_close = baseClose * ratioR * 0.98;
+      todayClose    = baseClose * (minResetRatio - 0.08);   // 8% below reset bottom
+      break;
+
+    case 'abs_up':
+      // Today breaks pHi but NOT rHi.
+      // anchorR with HIGHER RS than today blocks RS break.
+      // anchorR_close/spy_R > todayClose/spy_today → anchorR_close > todayClose * ratioR
+      anchorP_close = baseClose * (maxResetRatio - 0.05);   // doesn't dominate
+      // Set today first
+      todayClose    = baseClose * (maxResetRatio + 0.06);   // clear price break
+      // anchorR sets RS high above today's RS
+      anchorR_close = todayClose * ratioR * 1.10;           // RS = today's RS * 1.10
+      break;
+
+    case 'abs_dn':
+      anchorP_close = baseClose * (minResetRatio + 0.05);
+      todayClose    = baseClose * (minResetRatio - 0.06);
+      anchorR_close = todayClose * ratioR * 0.90;            // RS = today's RS * 0.90 (below today's)
+      break;
+
+    case 'rel_up':
+      // Today does NOT break price band but DOES break RS band.
+      // anchorP price > today (today stays inside) AND anchorP RS < today's RS (so doesn't dominate rHi)
+      //   anchorP_close > todayClose AND anchorP_close/spy_P < todayClose/spy_today
+      //   → todayClose < anchorP_close < todayClose * ratioP (requires ratioP > 1)
+      // Today's RS > resets' RS (which is at baseClose/spy_today). So todayClose/spy_today > baseClose/spy_today
+      //   → todayClose > baseClose. We pick todayClose just above baseClose.
+      todayClose    = baseClose * 1.005;                    // tiny rise — keeps in band
+      // Ensure todayClose < baseClose * maxResetRatio (so pHi from resets > today)
+      // baseClose * 1.005 vs baseClose * maxResetRatio (≥1.20) — safely below ✓
+      anchorP_close = todayClose * (1 + ratioP) / 2;         // between today and ratioP*today
+      // anchorR RS = anchorR_close/spy_R. Need < today's RS (= todayClose/spy_today)
+      //   → anchorR_close < todayClose * ratioR
+      anchorR_close = todayClose * ratioR * 0.92;
+      break;
+
+    case 'rel_dn':
+      // Today does NOT break price band but DOES break RS band downward.
+      // All RS values in lookback > today's RS.
+      // Resets' RS = baseClose/spy_today. So today's RS < that → todayClose < baseClose
+      todayClose    = baseClose * 0.995;
+      // anchorP at minResetRatio (low price, but RS = baseClose/spy_today * ratioP/spy_today ... )
+      // Actually need anchorP price NOT to dominate pLo. todayClose < pLo from resets = baseClose * minResetRatio
+      // ratio is at most 0.95, so baseClose*0.95 < baseClose. todayClose at 0.995*baseClose might be > 0.95*baseClose. Yes.
+      // So today's close DOES break the reset pLo? Let me check: pLo = baseClose * 0.9513. todayClose = 0.995 * baseClose = much higher. ✓ today doesn't break.
+      anchorP_close = baseClose * (minResetRatio - 0.03);  // below today, doesn't dominate
+      // anchorR RS > today's RS (so resets/anchor don't fall below today)
+      anchorR_close = todayClose * ratioR * 1.10;
+      break;
+
+    case 'neutral':
+    default:
+      todayClose    = baseClose;                             // exactly mid-channel
+      anchorP_close = baseClose * (maxResetRatio - 0.02);
+      anchorR_close = baseClose * (minResetRatio + 0.02);
+      break;
+  }
+
+  // Set anchors
+  function setBar(bar, close) {
+    bar.close = close; bar.open = close;
+    bar.high = close * 1.010; bar.low = close * 0.990;
+  }
+  setBar(bars[anchorP_idx], anchorP_close);
+  setBar(bars[anchorR_idx], anchorR_close);
+
+  // Set today (T-1)
+  const todayBar = bars[i];
+  const yesterdayClose = bars[i-1].close;
+  todayBar.close = todayClose;
+  todayBar.open = (yesterdayClose + todayClose) / 2;
+  todayBar.high = Math.max(todayBar.open, todayClose) * 1.003;
+  todayBar.low  = Math.min(todayBar.open, todayClose) * 0.997;
+}
+
+// Starting prices vary loosely by asset class
+function startingPx(sym, cls) {
+  if (sym === 'BTC-USD') return 30000;
+  if (sym === 'ETH-USD') return 1800;
+  if (cls === 'Bonds') return 85 + (sym.charCodeAt(0) % 30);
+  if (cls === 'Commodities') return 25 + (sym.charCodeAt(0) % 60);
+  if (cls === 'Cripto') return 1000;
+  return 50 + (sym.charCodeAt(0) % 200);
+}
+
+// ============================================================
+// DATA LAYER — swap this block when wiring to live data.
+//
+// The dashboard expects DATA to be an object of the form:
+//   DATA = {
+//     SPY: [{ date: Date, open, high, low, close }, ...],
+//     LQD: [{ date: Date, open, high, low, close }, ...],
+//     ...
+//   }
+//
+// Two modes are available below. Set MODE = 'mock' for the synthetic
+// universe (useful for UI testing), or MODE = 'live' to fetch from
+// Alvaro's daily JSON endpoint.
+// ============================================================
+
+const MODE = 'live';  // live: pulls real OHLC from /api/daily-snapshot (yfinance)
+
+let DATA = {};
+
+async function loadData() {
+  if (MODE === 'live') {
+    return await loadDataFromAPI();
+  }
+  return loadMockData();
+}
+
+// ----- LIVE: pull from Alvaro's daily snapshot (Vercel KV / S3 / GitHub Gist) -----
+// Expected response shape: { "SPY": [...bars...], "LQD": [...], ... }
+// where each bar = { d: "YYYY-MM-DD", o, h, l, c }
+async function loadDataFromAPI() {
+  const ENDPOINT = '/api/daily-snapshot';  // ← point to wherever Alvaro publishes
+  const res = await fetch(ENDPOINT);
+  if (!res.ok) throw new Error(`Data fetch failed: ${res.status}`);
+  const raw = await res.json();
+  const out = {};
+  for (const sym of Object.keys(raw)) {
+    out[sym] = raw[sym].map(b => ({
+      date: new Date(b.d),
+      open: b.o, high: b.h, low: b.l, close: b.c,
+    }));
+  }
+  return out;
+}
+
+// ----- MOCK: synthetic 1600-bar universe for UI testing -----
+function loadMockData() {
+  const data = {};
+  data['SPY'] = SPY;
+  UNIVERSE.forEach((u, idx) => {
+    if (u.sym === 'SPY') return;
+    const scen = scenarioFor(u.sym, idx);
+    data[u.sym] = genETF(u.sym, startingPx(u.sym, u.cls), scen, 4000 + idx * 73);
+    u.scenario = scen;
+  });
+  UNIVERSE.forEach(u => {
+    if (u.sym === 'SPY') return;
+    adjustBars(u.sym, u.scenario, data);
+  });
+  return data;
+}
+
+/* ============================================================
+   ANALYTICS — implementations match Alvaro's Python exactly
+   ============================================================ */
+
+// Donchian: UCL = max(close, N).shift(1), LCL = min(close, N).shift(1)
+// (Alvaro uses Close, not High/Low, for the channel — see his Donchian_Channels())
+function donchian(closes, n) {
+  const up = new Array(closes.length).fill(null);
+  const dn = new Array(closes.length).fill(null);
+  for (let i = n; i < closes.length; i++) {
+    let h = -Infinity, l = Infinity;
+    // shift(1): use bars [i-n, i-1]  (excludes today)
+    for (let j = i - n; j < i; j++) {
+      if (closes[j] > h) h = closes[j];
+      if (closes[j] < l) l = closes[j];
+    }
+    up[i] = h;
+    dn[i] = l;
+  }
+  return { up, dn };
+}
+
+// True Range + ATR via EMA (matches Alvaro's calculate_atr)
+function atrEMA(bars, n=14) {
+  const tr = new Array(bars.length).fill(0);
+  for (let i = 1; i < bars.length; i++) {
+    const a = bars[i].high - bars[i].low;
+    const b = Math.abs(bars[i].high - bars[i-1].close);
+    const c = Math.abs(bars[i].low  - bars[i-1].close);
+    tr[i] = Math.max(a, b, c);
+  }
+  // EMA span=n, adjust=False — alpha = 2/(n+1)
+  const out = new Array(bars.length).fill(null);
+  const alpha = 2 / (n + 1);
+  out[0] = tr[0];
+  for (let i = 1; i < tr.length; i++) {
+    out[i] = alpha * tr[i] + (1 - alpha) * out[i-1];
+  }
+  return out;
+}
+
+// RSI(14) — Wilder's smoothing
+function rsi(closes, period=14) {
+  const out = new Array(closes.length).fill(null);
+  if (closes.length < period + 1) return out;
+  let gainSum = 0, lossSum = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i-1];
+    if (d > 0) gainSum += d; else lossSum -= d;
+  }
+  let avgGain = gainSum / period;
+  let avgLoss = lossSum / period;
+  out[period] = 100 - 100 / (1 + (avgGain / (avgLoss || 1e-9)));
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i-1];
+    const gain = d > 0 ? d : 0;
+    const loss = d < 0 ? -d : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    out[i] = 100 - 100 / (1 + (avgGain / (avgLoss || 1e-9)));
+  }
+  return out;
+}
+
+function sma(values, n) {
+  const out = new Array(values.length).fill(null);
+  let s = 0;
+  for (let i = 0; i < values.length; i++) {
+    s += values[i];
+    if (i >= n) s -= values[i - n];
+    if (i >= n - 1) out[i] = s / n;
+  }
+  return out;
+}
+
+// Alvaro's relative(): assetA/assetA.iloc[-1500] vs assetB/assetB.iloc[-1500], then ratio×100
+function buildRSLine(closes, spyCloses) {
+  const out = new Array(closes.length).fill(null);
+  const baseA = closes[REBASE_IDX];
+  const baseB = spyCloses[REBASE_IDX];
+  if (!baseA || !baseB) return out;
+  for (let i = REBASE_IDX; i < closes.length; i++) {
+    const normA = closes[i] / baseA;
+    const normB = spyCloses[i] / baseB;
+    out[i] = (normA / normB) * 100;
+  }
+  return out;
+}
+
+function classify(sym, bars, spyBars, lookback) {
+  const closes    = bars.map(b => b.close);
+  const spyCloses = spyBars.map(b => b.close);
+  const i = bars.length - 2;  // T-1 (signal read index, per Alvaro's iloc[-2])
+  if (i < lookback + 200) return null;
+
+  const sma50  = sma(closes, 50);
+  const sma150 = sma(closes, 150);
+  const sma200 = sma(closes, 200);
+  const atr14  = atrEMA(bars, 14);
+  const rsi14  = rsi(closes, 14);
+
+  // Absolute Donchian on closes
+  const { up: pUp, dn: pDn } = donchian(closes, lookback);
+
+  // Relative line (Alvaro's rebased ratio)
+  const rs = buildRSLine(closes, spyCloses);
+  // Donchian on RS values (skip nulls in the prefix)
+  const rsForDonchian = rs.map(v => v === null ? -Infinity : v);
+  const rsDonUp = new Array(rs.length).fill(null);
+  const rsDonDn = new Array(rs.length).fill(null);
+  for (let k = REBASE_IDX + lookback; k < rs.length; k++) {
+    let h = -Infinity, l = Infinity;
+    for (let j = k - lookback; j < k; j++) {
+      if (rs[j] === null) continue;
+      if (rs[j] > h) h = rs[j];
+      if (rs[j] < l) l = rs[j];
+    }
+    rsDonUp[k] = h; rsDonDn[k] = l;
+  }
+
+  const closeT1 = closes[i];
+  const closeT  = closes[i + 1];
+  const chgPct = (closes[i+1] / closes[i] - 1) * 100;
+
+  const absBreakUp = pUp[i] !== null && closeT1 > pUp[i];
+  const absBreakDn = pDn[i] !== null && closeT1 < pDn[i];
+  const relBreakUp = rsDonUp[i] !== null && rs[i] > rsDonUp[i];
+  const relBreakDn = rsDonDn[i] !== null && rs[i] < rsDonDn[i];
+
+  // Break strength (in ATRs, per Alvaro's risk framework with 3·ATR stops)
+  const a14 = atr14[i] || 1e-9;
+  const absStrength = absBreakUp ? (closeT1 - pUp[i]) / a14 :
+                      absBreakDn ? (pDn[i] - closeT1) / a14 : 0;
+  // RS break strength: use stdev of recent RS daily changes
+  let rsChangeSum = 0, rsCount = 0;
+  for (let k = Math.max(REBASE_IDX + 1, i - 20); k < i; k++) {
+    if (rs[k] !== null && rs[k-1] !== null) {
+      rsChangeSum += Math.abs(rs[k] - rs[k-1]);
+      rsCount++;
+    }
+  }
+  const rsAvg = rsCount ? rsChangeSum / rsCount : 1e-9;
+  const relStrength = relBreakUp ? (rs[i] - rsDonUp[i]) / rsAvg :
+                      relBreakDn ? (rsDonDn[i] - rs[i]) / rsAvg : 0;
+
+  // Stage (Minervini) computed on T-1, same index as signals
+  // Also guard against division-by-zero when sma200 hasn't warmed up
+  const sma200_prior = sma200[i - 20];
+  const slope200 = (sma200[i] != null && sma200_prior != null && sma200_prior !== 0)
+    ? (sma200[i] - sma200_prior) / sma200_prior
+    : null;
+  let stage = 'NEUTRAL';
+  if (slope200 !== null &&
+      sma50[i] != null && sma150[i] != null && sma200[i] != null) {
+    if (closeT1 > sma50[i] && sma50[i] > sma150[i] && sma150[i] > sma200[i] && slope200 > 0) stage = 'STAGE 2';
+    else if (closeT1 < sma50[i] && sma50[i] < sma150[i] && sma150[i] < sma200[i] && slope200 < 0) stage = 'STAGE 4';
+  }
+
+  // Composite signal & rank
+  let signal = 'NEUTRAL', rank = 0;
+  if (absBreakUp && relBreakUp && stage === 'STAGE 2') { signal = 'POWER BREAKOUT'; rank = 3; }
+  else if (absBreakUp && relBreakUp)                   { signal = 'POWER BREAKOUT'; rank = 3; }
+  else if (absBreakUp)                                  { signal = 'ABS BREAKOUT';   rank = 2; }
+  else if (relBreakUp)                                  { signal = 'REL BREAKOUT';   rank = 1; }
+  else if (absBreakDn && relBreakDn && stage === 'STAGE 4') { signal = 'POWER BREAKDOWN'; rank = -3; }
+  else if (absBreakDn && relBreakDn)                   { signal = 'POWER BREAKDOWN'; rank = -3; }
+  else if (absBreakDn)                                  { signal = 'ABS BREAKDOWN';   rank = -2; }
+  else if (relBreakDn)                                  { signal = 'REL BREAKDOWN';   rank = -1; }
+
+  // Trade plan (matches Alvaro's: Stop = Px − 3·ATR)
+  const stop = closeT1 - 3 * a14;
+
+  // LIFE-HIGH / LIFE-LOW DETECTION
+  // Absolute: is closeT1 the highest/lowest close in the entire bar history?
+  // Relative: is rs[i] the highest/lowest RS value since rebase point?
+  // Using a small epsilon (0.999/1.001) so a number that's effectively tied counts.
+  let lifetimeHigh = -Infinity, lifetimeLow = Infinity;
+  for (let k = 0; k <= i; k++) {
+    if (closes[k] > lifetimeHigh) lifetimeHigh = closes[k];
+    if (closes[k] < lifetimeLow)  lifetimeLow  = closes[k];
+  }
+  let rsLifetimeHigh = -Infinity, rsLifetimeLow = Infinity;
+  for (let k = REBASE_IDX; k <= i; k++) {
+    if (rs[k] === null) continue;
+    if (rs[k] > rsLifetimeHigh) rsLifetimeHigh = rs[k];
+    if (rs[k] < rsLifetimeLow)  rsLifetimeLow  = rs[k];
+  }
+  // closeT1 needs to be at/above 99.9% of lifetime high to count as a life-high event
+  const absLifeHigh = closeT1 >= lifetimeHigh * 0.999;
+  const absLifeLow  = closeT1 <= lifetimeLow * 1.001;
+  const relLifeHigh = rs[i] !== null && rs[i] >= rsLifetimeHigh * 0.999;
+  const relLifeLow  = rs[i] !== null && rs[i] <= rsLifetimeLow * 1.001;
+
+  return {
+    sym,
+    closeT, closeT1, chgPct,
+    rsi14: rsi14[i],
+    atr14: a14,
+    stop,
+    pUp: pUp[i], pDn: pDn[i],
+    rsToday: rs[i],
+    rsDonUp: rsDonUp[i], rsDonDn: rsDonDn[i],
+    absBreakUp, absBreakDn, relBreakUp, relBreakDn,
+    absStrength, relStrength,
+    absLifeHigh, absLifeLow, relLifeHigh, relLifeLow,
+    lifetimeHigh, lifetimeLow, rsLifetimeHigh, rsLifetimeLow,
+    stage, signal, rank,
+    sma50, sma200, atr14arr: atr14, rs, rsDonUp_arr: rsDonUp, rsDonDn_arr: rsDonDn,
+    pUpArr: pUp, pDnArr: pDn,
+    bars,
+  };
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+
+function fmt(n, dp=2) {
+  if (n === null || n === undefined || !isFinite(n)) return '—';
+  return n.toFixed(dp);
+}
+function fmtPct(n, dp=2) {
+  if (n === null || n === undefined || !isFinite(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(dp) + '%';
+}
+
+let currentLookback = 121;
+let currentClassFilter = 'ALL';
+
+function rowsForLookback(lookback) {
+  return UNIVERSE
+    .filter(u => u.sym !== 'SPY')
+    .map(u => {
+      const c = classify(u.sym, DATA[u.sym], DATA['SPY'], lookback);
+      if (!c) return null;
+      return { ...c, sym: u.sym, name: u.name, cls: u.cls };
+    })
+    .filter(Boolean);
+}
+
+function buildClassButtons() {
+  const wrap = document.getElementById('class-toggle');
+  wrap.innerHTML = '';
+  const all = document.createElement('button');
+  all.dataset.cls = 'ALL';
+  all.className = 'active';
+  all.textContent = 'All';
+  wrap.appendChild(all);
+  ASSET_CLASSES.forEach(c => {
+    const b = document.createElement('button');
+    b.dataset.cls = c;
+    b.textContent = c;
+    wrap.appendChild(b);
+  });
+  wrap.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentClassFilter = btn.dataset.cls;
+      render();
+    });
+  });
+}
+
+function renderSummary(rows) {
+  const relUp = rows.filter(r => r.relBreakUp).length;
+  const relDn = rows.filter(r => r.relBreakDn).length;
+  const absUp = rows.filter(r => r.absBreakUp).length;
+  const absDn = rows.filter(r => r.absBreakDn).length;
+  const confUp = rows.filter(r => r.relBreakUp && r.absBreakUp).length;
+  const confDn = rows.filter(r => r.relBreakDn && r.absBreakDn).length;
+  // Life-highs = no overhead supply / no support — the strongest possible signal
+  const lifeHi = rows.filter(r => r.absLifeHigh || r.relLifeHigh).length;
+  const lifeLo = rows.filter(r => r.absLifeLow  || r.relLifeLow).length;
+  const netBias = relUp - relDn;
+  const biasSign = netBias > 0 ? '+' : '';
+  const biasCls = netBias > 5 ? 'pos' : netBias < -5 ? 'neg' : 'amber';
+
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-cell">
+      <span class="label">Universe</span>
+      <span class="value">${rows.length}</span>
+      <span class="sub">ETFs scanned · ${currentLookback}D lookback</span>
+    </div>
+    <div class="summary-cell">
+      <span class="label">Rel ↑ / Abs ↑</span>
+      <span class="value pos">${relUp} <span style="color:var(--text-mute); font-size:18px;">/</span> ${absUp}</span>
+      <span class="sub">${confUp} confluence · <span style="color:var(--amber);">★ ${lifeHi} life-high</span></span>
+    </div>
+    <div class="summary-cell">
+      <span class="label">Rel ↓ / Abs ↓</span>
+      <span class="value neg">${relDn} <span style="color:var(--text-mute); font-size:18px;">/</span> ${absDn}</span>
+      <span class="sub">${confDn} confluence · <span style="color:var(--amber);">☠ ${lifeLo} life-low</span></span>
+    </div>
+    <div class="summary-cell">
+      <span class="label">Net Relative Bias</span>
+      <span class="value ${biasCls}">${biasSign}${netBias}</span>
+      <span class="sub">Rel leaders − Rel laggards</span>
+    </div>
+  `;
+}
+
+function buildRChip(r, kind, layer, allFlags) {
+  // kind: 'up' or 'dn'
+  // layer: 'rel' or 'abs' (which sub-row this chip appears in)
+  // allFlags: { absUp, absDn, relUp, relDn }
+  //
+  // Confluence = this ETF fires in BOTH REL and ABS in the SAME direction → solid chip.
+  // Life-high  = this layer's signal is at its all-time extreme → ★ (up) or ☠ (dn).
+  //   - REL layer + up:  uses relLifeHigh
+  //   - REL layer + dn:  uses relLifeLow
+  //   - ABS layer + up:  uses absLifeHigh
+  //   - ABS layer + dn:  uses absLifeLow
+  const isConf = (kind === 'up' && allFlags.relUp && allFlags.absUp) ||
+                 (kind === 'dn' && allFlags.relDn && allFlags.absDn);
+  const confCls = isConf ? ' conf' : '';
+
+  let lifeHit = false;
+  let lifeMark = '';
+  let lifeTip = '';
+  if (layer === 'rel' && kind === 'up' && r.relLifeHigh) { lifeHit = true; lifeMark = '★'; lifeTip = ' · ALL-TIME REL HIGH vs SPY (no overhead supply)'; }
+  if (layer === 'rel' && kind === 'dn' && r.relLifeLow)  { lifeHit = true; lifeMark = '☠'; lifeTip = ' · ALL-TIME REL LOW vs SPY (no support)'; }
+  if (layer === 'abs' && kind === 'up' && r.absLifeHigh) { lifeHit = true; lifeMark = '★'; lifeTip = ' · ALL-TIME ABS HIGH (no overhead supply)'; }
+  if (layer === 'abs' && kind === 'dn' && r.absLifeLow)  { lifeHit = true; lifeMark = '☠'; lifeTip = ' · ALL-TIME ABS LOW (no support)'; }
+  const lifeCls = lifeHit ? ' life' : '';
+  const lifeBadge = lifeMark ? `<span class="rchip-life">${lifeMark}</span>` : '';
+
+  const dpct = r.chgPct;
+  const sign = dpct >= 0 ? '+' : '';
+  const sigLabel = isConf ? 'CONFLUENCE (Rel+Abs)' : (layer === 'rel' ? 'REL break only' : 'ABS break only');
+  const tip = `${r.name} · ${r.sym} · Px ${fmt(r.closeT, 2)} · ${sigLabel} · RSI ${fmt(r.rsi14,0)}${lifeTip}`;
+  return `<span class="rchip ${layer} ${kind}${confCls}${lifeCls}" title="${tip}">${lifeBadge}${r.sym}<span class="delta">${sign}${dpct.toFixed(1)}</span></span>`;
+}
+
+function renderCIO(rows) {
+  // Each asset class gets 2 sub-rows:
+  //   REL (top, emphasized): names where RS broke its Donchian high/low
+  //   ABS (bottom, muted):   names where Close broke its Donchian high/low
+  // A chip appearing in BOTH the REL row and ABS row in the same direction
+  // = confluence → renders as a solid filled chip in both layers.
+
+  const byClass = {};
+  ASSET_CLASSES.forEach(c => {
+    byClass[c] = { relUp: [], relDn: [], absUp: [], absDn: [], all: [] };
+  });
+  rows.forEach(r => {
+    if (!byClass[r.cls]) return;
+    byClass[r.cls].all.push(r);
+    if (r.relBreakUp) byClass[r.cls].relUp.push(r);
+    if (r.relBreakDn) byClass[r.cls].relDn.push(r);
+    if (r.absBreakUp) byClass[r.cls].absUp.push(r);
+    if (r.absBreakDn) byClass[r.cls].absDn.push(r);
+  });
+
+  // Sort priority within each list:
+  //   1. Life-high/low for that layer's direction (most powerful — no overhead/support)
+  //   2. Confluence (REL + ABS both fire)
+  //   3. Break strength
+  function lifeHitFor(r, kind, layer) {
+    if (layer === 'rel' && kind === 'up') return r.relLifeHigh;
+    if (layer === 'rel' && kind === 'dn') return r.relLifeLow;
+    if (layer === 'abs' && kind === 'up') return r.absLifeHigh;
+    if (layer === 'abs' && kind === 'dn') return r.absLifeLow;
+    return false;
+  }
+  function sortList(list, kind, layer) {
+    list.sort((a, b) => {
+      const aLife = lifeHitFor(a, kind, layer) ? 1 : 0;
+      const bLife = lifeHitFor(b, kind, layer) ? 1 : 0;
+      if (aLife !== bLife) return bLife - aLife;
+      const aConf = (kind === 'up' && a.absBreakUp && a.relBreakUp) ||
+                    (kind === 'dn' && a.absBreakDn && a.relBreakDn) ? 1 : 0;
+      const bConf = (kind === 'up' && b.absBreakUp && b.relBreakUp) ||
+                    (kind === 'dn' && b.absBreakDn && b.relBreakDn) ? 1 : 0;
+      if (aConf !== bConf) return bConf - aConf;
+      const aStr = Math.abs(a.relStrength) + Math.abs(a.absStrength);
+      const bStr = Math.abs(b.relStrength) + Math.abs(b.absStrength);
+      return bStr - aStr;
+    });
+  }
+  ASSET_CLASSES.forEach(c => {
+    sortList(byClass[c].relUp, 'up', 'rel');
+    sortList(byClass[c].relDn, 'dn', 'rel');
+    sortList(byClass[c].absUp, 'up', 'abs');
+    sortList(byClass[c].absDn, 'dn', 'abs');
+  });
+
+  // Only show classes with any break activity (or any names if filter narrowed)
+  const visibleClasses = ASSET_CLASSES.filter(c => byClass[c].all.length > 0);
+
+  function chips(list, kind, layer) {
+    if (list.length === 0) return '<div class="rg-chips empty"></div>';
+    return `<div class="rg-chips">${list.map(r => buildRChip(r, kind, layer, {
+      relUp: r.relBreakUp, relDn: r.relBreakDn,
+      absUp: r.absBreakUp, absDn: r.absBreakDn,
+    })).join('')}</div>`;
+  }
+
+  const gridRows = visibleClasses.map(c => {
+    const totalBreaks = byClass[c].relUp.length + byClass[c].relDn.length +
+                        byClass[c].absUp.length + byClass[c].absDn.length;
+    return `<div class="rg-row">
+      <div class="rg-class">
+        <div class="name">${c}</div>
+        <div class="count">${byClass[c].all.length} ETFs</div>
+      </div>
+      <div class="rg-stack">
+        <div class="rg-subrow rel">
+          <span class="rg-tag">REL</span>
+          ${chips(byClass[c].relUp, 'up', 'rel')}
+        </div>
+        <div class="rg-subrow abs">
+          <span class="rg-tag">ABS</span>
+          ${chips(byClass[c].absUp, 'up', 'abs')}
+        </div>
+      </div>
+      <div class="rg-stack">
+        <div class="rg-subrow rel">
+          <span class="rg-tag">REL</span>
+          ${chips(byClass[c].relDn, 'dn', 'rel')}
+        </div>
+        <div class="rg-subrow abs">
+          <span class="rg-tag">ABS</span>
+          ${chips(byClass[c].absDn, 'dn', 'abs')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cio-view').innerHTML = `
+    <div class="relgrid">
+      <div class="rg-colhead">
+        <div class="cell cls-h">Asset Class</div>
+        <div class="cell up">↑ Up<span class="meta">REL = leading vs SPY · ABS = price break · solid = both · ★ = life-high (no overhead)</span></div>
+        <div class="cell dn">↓ Down<span class="meta">REL = lagging vs SPY · ABS = price break · solid = both · ☠ = life-low (no support)</span></div>
+      </div>
+      ${gridRows}
+    </div>
+  `;
+}
+
+/* ============================================================
+   DETAIL CHARTS — Alvaro-style full panel
+   Matches his Comparison_Chart() top panel:
+     - blue solid price line
+     - red dashed 50-day MA
+     - green dashed 200-day MA
+     - green dot at every Donchian regime flip UP (breakup transition)
+     - red dot at every Donchian regime flip DOWN (breakdown transition)
+   Dates come from bar.date (set at generation time, or from real data feed).
+   ============================================================ */
+
+function alvaroChart(r) {
+  const bars = r.bars;
+  const sma50 = r.sma50;
+  const sma200 = r.sma200;
+  const pUpArr = r.pUpArr;
+  const pDnArr = r.pDnArr;
+  const N = bars.length;
+
+  // Show roughly the last 5 years
+  const FROM = Math.max(0, N - Math.round(5 * 252));
+  const SLICE_LEN = N - FROM;
+
+  // Compute regime signal (Alvaro's loop): 1 if close > UCL and prior != 1, -1 if close < LCL and prior != -1, else prior
+  const signal = new Array(N).fill(0);
+  for (let i = 1; i < N; i++) {
+    if (pUpArr[i] != null && bars[i].close > pUpArr[i] && signal[i-1] !== 1) signal[i] = 1;
+    else if (pDnArr[i] != null && bars[i].close < pDnArr[i] && signal[i-1] !== -1) signal[i] = -1;
+    else signal[i] = signal[i-1];
+  }
+  // Regime flips
+  const flipsUp = [];
+  const flipsDn = [];
+  for (let i = FROM; i < N; i++) {
+    if (signal[i] === 1 && signal[i-1] !== 1) flipsUp.push(i);
+    if (signal[i] === -1 && signal[i-1] !== -1) flipsDn.push(i);
+  }
+
+  // Y range
+  let yMin = Infinity, yMax = -Infinity;
+  for (let i = FROM; i < N; i++) {
+    if (bars[i].close < yMin) yMin = bars[i].close;
+    if (bars[i].close > yMax) yMax = bars[i].close;
+    if (sma50[i] != null) {
+      if (sma50[i] < yMin) yMin = sma50[i];
+      if (sma50[i] > yMax) yMax = sma50[i];
+    }
+    if (sma200[i] != null) {
+      if (sma200[i] < yMin) yMin = sma200[i];
+      if (sma200[i] > yMax) yMax = sma200[i];
+    }
+  }
+  const yPad = (yMax - yMin) * 0.06;
+  yMin -= yPad; yMax += yPad;
+
+  // Chart dimensions (SVG coords)
+  const W = 1000, H = 280;
+  const ML = 56, MR = 16, MT = 28, MB = 36;
+  const PW = W - ML - MR;
+  const PH = H - MT - MB;
+
+  function xOf(idx) {
+    return ML + ((idx - FROM) / (SLICE_LEN - 1)) * PW;
+  }
+  function yOf(v) {
+    return MT + (1 - (v - yMin) / (yMax - yMin)) * PH;
+  }
+
+  // X-axis: year ticks from real bar dates
+  const dateStart = bars[FROM].date;
+  const dateEnd   = bars[N - 1].date;
+  const yearStart = dateStart.getFullYear();
+  const yearEnd   = dateEnd.getFullYear();
+  const yearTicks = [];
+  for (let yr = yearStart; yr <= yearEnd; yr++) {
+    // Find first bar of that calendar year
+    let foundIdx = null;
+    for (let i = FROM; i < N; i++) {
+      if (bars[i].date.getFullYear() === yr) { foundIdx = i; break; }
+    }
+    if (foundIdx !== null) yearTicks.push({ idx: foundIdx, year: yr });
+  }
+
+  // Y-axis: nice round ticks
+  function niceTicks(min, max, n=6) {
+    const range = max - min;
+    const rough = range / n;
+    const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+    const opts = [1, 2, 2.5, 5, 10];
+    let step = pow;
+    for (const o of opts) {
+      if (o * pow >= rough) { step = o * pow; break; }
+    }
+    const ticks = [];
+    const start = Math.ceil(min / step) * step;
+    for (let v = start; v <= max; v += step) ticks.push(v);
+    return ticks;
+  }
+  const yTicks = niceTicks(yMin, yMax, 6);
+
+  // Build paths
+  function buildPath(arr, opts={}) {
+    const pts = [];
+    for (let i = FROM; i < N; i++) {
+      const v = arr[i];
+      if (v == null || !isFinite(v)) continue;
+      pts.push(`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`);
+    }
+    if (!pts.length) return '';
+    const dash = opts.dash ? ` stroke-dasharray="${opts.dash}"` : '';
+    return `<polyline points="${pts.join(' ')}" fill="none" stroke="${opts.color}" stroke-width="${opts.width || 1.6}"${dash} stroke-linejoin="round" stroke-linecap="round" />`;
+  }
+
+  const closes = bars.map(b => b.close);
+  const pricePath = buildPath(closes, { color: '#1f77b4', width: 1.7 });
+  const sma50Path = buildPath(sma50, { color: '#d62728', width: 1.3, dash: '5,3' });
+  const sma200Path = buildPath(sma200, { color: '#2ca02c', width: 1.3, dash: '5,3' });
+
+  // Gridlines
+  let grid = '';
+  yTicks.forEach(t => {
+    const y = yOf(t);
+    grid += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}" stroke="#cccccc" stroke-dasharray="2,3" stroke-width="0.7" />`;
+  });
+  yearTicks.forEach(t => {
+    const x = xOf(t.idx);
+    grid += `<line x1="${x.toFixed(1)}" y1="${MT}" x2="${x.toFixed(1)}" y2="${H-MB}" stroke="#cccccc" stroke-dasharray="2,3" stroke-width="0.7" />`;
+  });
+
+  // Y-axis labels
+  let yLabels = '';
+  yTicks.forEach(t => {
+    yLabels += `<text x="${ML-8}" y="${(yOf(t)+3).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#333">${Math.round(t)}</text>`;
+  });
+  // X-axis labels
+  let xLabels = '';
+  yearTicks.forEach(t => {
+    xLabels += `<text x="${xOf(t.idx).toFixed(1)}" y="${H-MB+16}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#333">${t.year}</text>`;
+  });
+
+  // Flip markers
+  let flipMarkers = '';
+  flipsUp.forEach(i => {
+    const cx = xOf(i), cy = yOf(bars[i].close);
+    flipMarkers += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#2ca02c" stroke="#000" stroke-width="1" />`;
+  });
+  flipsDn.forEach(i => {
+    const cx = xOf(i), cy = yOf(bars[i].close);
+    flipMarkers += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#d62728" stroke="#000" stroke-width="1" />`;
+  });
+
+  // Axis frame
+  const frame = `
+    <line x1="${ML}" y1="${MT}" x2="${ML}" y2="${H-MB}" stroke="#333" stroke-width="1" />
+    <line x1="${ML}" y1="${H-MB}" x2="${W-MR}" y2="${H-MB}" stroke="#333" stroke-width="1" />
+  `;
+
+  // Y-axis title
+  const yTitle = `<text x="14" y="${MT + PH/2}" text-anchor="middle" transform="rotate(-90, 14, ${MT + PH/2})" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#333">Index</text>`;
+  // X-axis title
+  const xTitle = `<text x="${ML + PW/2}" y="${H-4}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#333">Date</text>`;
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}
+    ${frame}
+    ${yLabels}${xLabels}
+    ${yTitle}${xTitle}
+    ${sma200Path}
+    ${sma50Path}
+    ${pricePath}
+    ${flipMarkers}
+  </svg>`;
+
+  return svg;
+}
+
+function renderDetail(rows) {
+  const byCls = {};
+  rows.forEach(r => { if (!byCls[r.cls]) byCls[r.cls] = []; byCls[r.cls].push(r); });
+
+  const order = ASSET_CLASSES.filter(c => byCls[c]);
+  let html = '';
+  order.forEach(cls => {
+    byCls[cls].sort((a, b) => {
+      if (a.rank !== b.rank) return b.rank - a.rank;
+      return (Math.abs(b.absStrength) + Math.abs(b.relStrength)) - (Math.abs(a.absStrength) + Math.abs(a.relStrength));
+    });
+    html += `<div class="detail-class-header">${cls} · ${byCls[cls].length} names</div>`;
+    byCls[cls].forEach(r => {
+      const pillCls =
+        (r.absBreakUp && r.relBreakUp) ? 'power-up' :
+        r.absBreakUp ? 'abs-up' :
+        r.relBreakUp ? 'rel-up' :
+        (r.absBreakDn && r.relBreakDn) ? 'power-dn' :
+        r.absBreakDn ? 'abs-dn' :
+        r.relBreakDn ? 'rel-dn' : 'neutral';
+      const signalLabel = r.signal.replace('BREAKOUT', '↑').replace('BREAKDOWN', '↓');
+      const lookbackLabel = currentLookback === 121 ? '6M' : '12M';
+      const chgCls = r.chgPct >= 0 ? 'pos' : 'neg';
+      const chgColor = r.chgPct >= 0 ? '#1f7a3a' : '#a04848';
+
+      // Life-high/low badges — most powerful intermarket signal
+      const lifeBadges = [];
+      if (r.absLifeHigh) lifeBadges.push('<span class="life-badge hi">★ ABS LIFE HIGH</span>');
+      if (r.relLifeHigh) lifeBadges.push('<span class="life-badge hi">★ REL LIFE HIGH vs SPY</span>');
+      if (r.absLifeLow)  lifeBadges.push('<span class="life-badge lo">☠ ABS LIFE LOW</span>');
+      if (r.relLifeLow)  lifeBadges.push('<span class="life-badge lo">☠ REL LIFE LOW vs SPY</span>');
+
+      html += `
+        <div class="alvaro-card${(r.absLifeHigh || r.relLifeHigh || r.absLifeLow || r.relLifeLow) ? ' has-life' : ''}">
+          <div class="title">
+            <span>${lookbackLabel} Breakup/Breakdown: ${r.sym} — ${r.name}</span>
+            <span class="right-meta">${fmt(r.closeT, 2)} <span style="color:${chgColor}; font-weight:700;">${fmtPct(r.chgPct, 2)}</span></span>
+          </div>
+          <div class="signal-row">
+            <span class="pill ${pillCls}">${signalLabel}</span>
+            <span>Stage: <strong style="color:#1a1a1a;">${r.stage}</strong></span>
+            <span>RSI(14): <strong style="color:#1a1a1a;">${fmt(r.rsi14, 0)}</strong></span>
+            <span>ATR: <strong style="color:#1a1a1a;">${fmt(r.atr14, 2)}</strong></span>
+            <span>Stop: <strong style="color:#1a1a1a;">${fmt(r.stop, 2)}</strong></span>
+            <span>Life Hi: <strong style="color:#1a1a1a;">${fmt(r.lifetimeHigh, 2)}</strong></span>
+            <span>Life Lo: <strong style="color:#1a1a1a;">${fmt(r.lifetimeLow, 2)}</strong></span>
+            ${lifeBadges.length ? lifeBadges.join(' ') : ''}
+          </div>
+          <div class="chart-wrap">
+            ${alvaroChart(r)}
+            <div class="legend">
+              <div><span class="swatch" style="background:#1f77b4;"></span>${r.name.length > 28 ? r.sym : r.name}</div>
+              <div><span class="swatch dashed" style="color:#2ca02c;"></span>200-day MA</div>
+              <div><span class="swatch dashed" style="color:#d62728;"></span>50-day MA</div>
+              <div><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#2ca02c; border:1px solid #000; vertical-align:middle; margin-right:4px;"></span>Breakout Up</div>
+              <div><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#d62728; border:1px solid #000; vertical-align:middle; margin-right:4px;"></span>Breakout Down</div>
+            </div>
+          </div>
+        </div>`;
+    });
+  });
+
+  document.getElementById('detail-view').innerHTML = html;
+}
+
+function render() {
+  let rows = rowsForLookback(currentLookback);
+  if (currentClassFilter !== 'ALL') {
+    rows = rows.filter(r => r.cls === currentClassFilter);
+  }
+  document.getElementById('univ-count').textContent = UNIVERSE.length - 1;
+  document.getElementById('asof').textContent = new Date().toISOString().slice(0, 10) + ' · T-1';
+  document.getElementById('mode-badge').textContent = MODE === 'live' ? 'LIVE' : 'MOCK DATA';
+  document.getElementById('mode-badge').style.color = MODE === 'live' ? 'var(--abs-up)' : 'var(--amber)';
+  document.getElementById('mode-badge').style.borderColor = MODE === 'live' ? 'var(--abs-up)' : 'var(--amber)';
+
+  renderSummary(rows);
+  renderCIO(rows);
+  // Detail view: only render when it's actually visible (144 charts is heavy)
+  if (document.body.classList.contains('detail-active')) {
+    renderDetail(rows);
+  } else {
+    document.getElementById('detail-view').innerHTML = '';
+  }
+}
+
+// Wire up controls
+document.querySelectorAll('#lookback-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#lookback-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentLookback = parseInt(btn.dataset.n);
+    render();
+  });
+});
+document.querySelectorAll('#view-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#view-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (btn.dataset.view === 'detail') {
+      document.body.classList.add('detail-active');
+      render();
+    } else {
+      document.body.classList.remove('detail-active');
+    }
+  });
+});
+
+buildClassButtons();
+
+// Bootstrap: load data (mock or live), then render
+(async function bootstrap() {
+  const cioEl = document.getElementById('cio-view');
+  cioEl.innerHTML = `<div style="padding:48px 28px; text-align:center; color:var(--text-mute); font-size:11px;">Loading universe…</div>`;
+  try {
+    DATA = await loadData();
+    render();
+  } catch (err) {
+    console.error(err);
+    cioEl.innerHTML = `<div style="padding:48px 28px; text-align:center; color:var(--abs-dn); font-size:11px;">
+      Failed to load data: ${err.message}<br>
+      <span style="color:var(--text-mute);">Check MODE setting at top of script, or the /api/daily-snapshot endpoint.</span>
+    </div>`;
+  }
+})();
+</script>
+
+</body>
+</html>
